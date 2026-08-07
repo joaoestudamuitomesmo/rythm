@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rhythm Game - Base Project</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ================= MAIN MENU ================= -->
+  <section id="menu-screen" class="screen active">
+    <h1 class="title">RHYTHM BASE</h1>
+
+    <div class="menu-box">
+      <h2>Select Song</h2>
+      <select id="song-select"></select>
+
+      <h2>Select Difficulty</h2>
+      <div class="diff-buttons">
+        <button class="diff-btn" data-diff="easy">EASY</button>
+        <button class="diff-btn selected" data-diff="normal">NORMAL</button>
+        <button class="diff-btn" data-diff="hard">HARD</button>
+      </div>
+
+      <button id="play-btn">PLAY</button>
+    </div>
+
+    <p class="hint">Controls: D F J K (or Arrow Keys)</p>
+  </section>
+
+  <!-- ================= GAME SCREEN ================= -->
+  <section id="game-screen" class="screen">
+    <div id="hud">
+      <div id="score-display">SCORE: 0</div>
+      <div id="combo-display"></div>
+      <div id="accuracy-display">ACC: 100%</div>
+    </div>
+
+    <div id="track-container">
+      <div id="hit-zone"></div>
+      <div class="lane" data-lane="0"><div class="receptor" data-lane="0"></div></div>
+      <div class="lane" data-lane="1"><div class="receptor" data-lane="1"></div></div>
+      <div class="lane" data-lane="2"><div class="receptor" data-lane="2"></div></div>
+      <div class="lane" data-lane="3"><div class="receptor" data-lane="3"></div></div>
+    </div>
+
+    <div id="progress-bar-container">
+      <div id="progress-bar-fill"></div>
+    </div>
+  </section>
+
+  <!-- ================= RESULTS SCREEN ================= -->
+  <section id="results-screen" class="screen">
+    <h1>RESULTS</h1>
+    <div class="results-box">
+      <p>Score: <span id="result-score">0</span></p>
+      <p>Max Combo: <span id="result-combo">0</span></p>
+      <p>Accuracy: <span id="result-accuracy">0%</span></p>
+      <p id="result-rank"></p>
+    </div>
+    <button id="back-to-menu-btn">BACK TO MENU</button>
+  </section>
+
+  <audio id="song-audio"></audio>
+
+  <script src="game/menu/menu.js"></script>
+  <script src="game/ingame/game.js"></script>
+</body>
+</html>
