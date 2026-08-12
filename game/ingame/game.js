@@ -143,6 +143,12 @@
   function spawnNote(noteData) {
     const el = document.createElement("div");
     el.className = "note lane-" + noteData.lane;
+    
+    const possibleExtraSpins = [-270, -180, -90, 0];
+    const randomExtraSpin = possibleExtraSpins[Math.floor(Math.random() * possibleExtraSpins.length)];
+    
+    el.style.setProperty("--start-rot", randomExtraSpin + "deg");
+    
     trackContainer.querySelector(`.lane[data-lane="${noteData.lane}"]`).appendChild(el);
     const noteObj = { el, time: noteData.time, lane: noteData.lane, judged: false };
     activeNotes.push(noteObj);
@@ -258,6 +264,7 @@
 
     if (judgement === "sick" || judgement === "good") {
       spawnParticles(noteObj.lane);
+      bump(trackContainer, "punch", 50);
       // Spawn random flash if you've got a combo going
       if (combo >= 5) spawnComboFlash();
     }
@@ -283,11 +290,9 @@
     const flash = document.createElement("div");
     flash.className = "combo-flash";
     
-    // Pick random position across the screen
     flash.style.left = (Math.random() * 90 + 5) + "vw";
     flash.style.top = (Math.random() * 90 + 5) + "vh";
     
-    // Scale flash size based on current heat
     const heat = Math.min(combo / 50, 1);
     const size = 150 + (heat * 400); 
     flash.style.width = size + "px";
@@ -323,20 +328,37 @@
       setTimeout(() => p.remove(), 460);
     }
   }
-
-  function showComboMilestone(combo) {
+function showComboMilestone(combo) {
     const el = document.createElement("div");
     el.className = "combo-milestone";
     el.textContent = combo + " COMBO!";
+    
+    el.style.position = "absolute";
+    
+    const randomX = Math.random() * 80 + 10; 
+    const randomY = Math.random() * 60 + 20; 
+    
+    el.style.left = randomX + "%";
+    el.style.top = randomY + "%";
+
     trackContainer.appendChild(el);
     setTimeout(() => el.remove(), 600);
   }
 
-  function showJudgement(judgement, lane) {
+function showJudgement(judgement, lane) {
     const label = { sick: "SICK!", good: "GOOD", bad: "BAD", miss: "MISS" }[judgement];
     const el = document.createElement("div");
     el.className = "judgement " + judgement;
     el.textContent = label;
+    
+    el.style.position = "absolute";
+    
+    const randomX = Math.random() * 80 + 10; 
+    const randomY = Math.random() * 60 + 20; 
+    
+    el.style.left = randomX + "%";
+    el.style.top = randomY + "%";
+
     trackContainer.appendChild(el);
     setTimeout(() => el.remove(), 400);
   }

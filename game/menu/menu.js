@@ -11,6 +11,7 @@ const SONG_LIST = [
   { id: "eastward", name: "EastWard", chart: "assets/audio/music/Eastward/EastWard.json" },
   { id: "rei", name: "Rei dos demônios", chart: "assets/audio/music/Rei/Rei.json" },
   { id: "SquabbleUp", name: "Squabble Up", chart: "assets/audio/music/SquabbleUp/SquabbleUp.json" },
+  { id: "Odeio", name: "Eu Te Odeio", chart: "assets/audio/music/Odeio/Odeio.json" },
 ];
 
 // Deterministic "cover art" color per song, so each card reads as its
@@ -34,7 +35,7 @@ function renderCarousel() {
   const hue = hueForSong(currentIndex);
 
   const cover = document.getElementById("song-cover");
-  cover.style.background = `linear-gradient(135deg, hsl(${hue},85%,55%), hsl(${(hue + 40) % 360},85%,40%))`;
+  cover.style.background = `linear-gradient(135deg, hsl(${hue},35%,55%), hsl(${(hue + 40) % 360},85%,40%))`;
   document.getElementById("song-cover-letter").textContent = song.name.charAt(0).toUpperCase();
   document.getElementById("song-name").textContent = song.name;
   document.getElementById("song-index").textContent = `${currentIndex + 1} / ${SONG_LIST.length}`;

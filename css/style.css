@@ -1,7 +1,7 @@
 :root {
   --bg: #0a0a12;
   --panel: #1c1c2a;
-  --accent: #ff3366;
+  --accent: #2442c7;
   --accent2: #3cf1ff;
   --lane0: #3cf1ff; /* Left - Cyan */
   --lane1: #52ff87; /* Down - Green */
@@ -18,14 +18,14 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-family: "Cascadia Code", sans-serif;
   overflow: hidden;
 }
 
 body {
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(255,51,102,0.08), transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(60,241,255,0.08), transparent 40%),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.1), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.2), transparent 40%),
     linear-gradient(var(--bg), var(--bg));
 }
 
@@ -48,10 +48,10 @@ body {
   pointer-events: none;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(255,255,255,0.025) 0px,
+    rgba(173, 236, 255, 0.025) 0px,
     rgba(255,255,255,0.025) 1px,
     transparent 1px,
-    transparent 3px
+    transparent 2px
   );
   z-index: 0;
 }
@@ -61,7 +61,7 @@ body {
   font-size: 3rem;
   letter-spacing: 6px;
   color: var(--accent);
-  text-shadow: 0 0 15px var(--accent), 0 0 40px rgba(255,51,102,0.4);
+  text-shadow: 0 0 15px var(--accent), 0 0 40px rgba(255, 164, 187, 0.4);
   margin-bottom: 30px;
   animation: title-pulse 2.4s ease-in-out infinite;
   z-index: 1;
@@ -82,7 +82,7 @@ body {
 .carousel-arrow {
   width: 46px;
   height: 46px;
-  border-radius: 50%;
+  border-radius: 10px;
   border: 2px solid #444;
   background: #2c2c3e;
   color: var(--text);
@@ -111,6 +111,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 300px;
   gap: 14px;
   box-shadow: 0 0 0 rgba(255,51,102,0);
   transition: box-shadow 0.2s, border-color 0.2s;
@@ -121,19 +122,59 @@ body {
 }
 
 @keyframes card-pop {
-  0%   { transform: scale(0.85); opacity: 0.4; }
-  60%  { transform: scale(1.05); }
+  0%   { transform: scale(0.9); opacity: 0.4; }
+  60%  { transform: scale(1.01); }
   100% { transform: scale(1); opacity: 1; }
 }
-
 .song-cover {
   width: 140px;
   height: 140px;
-  border-radius: 14px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  
+  animation: spinAndBounce 4s linear infinite;
+}
+.song-cover {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  
+  /* Increased duration to 12s so it spins longer per cycle */
+  animation: spinAndRareBounce 12s linear infinite;
+}
+
+@keyframes spinAndRareBounce {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  33% {
+    transform: rotate(360deg) scale(1);
+  }
+  66% {
+    transform: rotate(720deg) scale(1);
+  }
+  72% {
+    /* Starts scaling up very quickly */
+    transform: rotate(775deg) scale(1);
+  }
+  75% {
+    /* Peak of the quick bounce */
+    transform: rotate(810deg) scale(1.08);
+  }
+  78% {
+    /* Snaps back down quickly */
+    transform: rotate(845deg) scale(1);
+  }
+  100% {
+    transform: rotate(1080deg) scale(1); /* Total of 3 full rotations */
+  }
 }
 
 #song-cover-letter {
@@ -214,7 +255,7 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-  box-shadow: 0 0 16px rgba(255,51,102,0.5);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.5);
   transform: translateY(-2px);
 }
 
@@ -223,6 +264,7 @@ body {
   padding: 14px 48px;
   font-size: 1.25rem;
   font-weight: bold;
+  width: 300px;
   letter-spacing: 3px;
   border: none;
   border-radius: 10px;
@@ -232,12 +274,12 @@ body {
   transition: 0.15s;
   box-shadow: 0 0 20px rgba(255,51,102,0.35);
   z-index: 1;
-  animation: play-breathe 1.8s ease-in-out infinite;
+  animation: play-breathe 5s ease-in-out infinite;
 }
 
 @keyframes play-breathe {
-  0%, 100% { box-shadow: 0 0 20px rgba(255,51,102,0.35); }
-  50%      { box-shadow: 0 0 32px rgba(255,51,102,0.65); }
+  0%, 100% { box-shadow: 0 0 20px rgba(92, 92, 92, 0.35); }
+  50%      { box-shadow: 0 0 45px rgba(255, 255, 255, 0.65); }
 }
 
 #play-btn:hover { transform: scale(1.07); }
@@ -568,3 +610,23 @@ body {
   0%   { opacity: 1; transform: scale(0.6); }
   100% { opacity: 0; transform: scale(1.6); }
 }
+
+@keyframes fastSpawnSpin {
+  0% {
+    transform: translateX(-50%) rotate(calc(var(--base-rot, 0deg) + var(--start-rot, 0deg)));
+  }
+  100% {
+    transform: translateX(-50%) rotate(var(--base-rot, 0deg));
+  }
+}
+
+.note {
+  transform-origin: center center;
+  animation: fastSpawnSpin 0.3s ease-out forwards;
+}
+
+/* Base directions for FNF lanes: 0=Left, 1=Down, 2=Up, 3=Right */
+.note.lane-0 { --base-rot: -90deg; }  /* Left arrow */
+.note.lane-1 { --base-rot: 180deg; } /* Down arrow */
+.note.lane-2 { --base-rot: 0deg; }   /* Up arrow */
+.note.lane-3 { --base-rot: 90deg; }  /* Right arrow */
