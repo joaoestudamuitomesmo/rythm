@@ -6,39 +6,61 @@
 
 (function () {
   const LANES = 4;
+
+  // FNF 4-Lane Standard Layout:
+  // Lane 0: Left | Lane 1: Down | Lane 2: Up | Lane 3: Right
   const KEY_TO_LANE = {
-    "d": 0, "f": 1, "j": 2, "k": 3,
-    "lmb": 2, "s": 1, "w": 0, "rmb": 3
+    // Arrow Keys (Standard FNF)
+    "arrowleft": 0,
+    "arrowdown": 1,
+    "arrowup": 2,
+    "arrowright": 3,
+
+    // WASD Keys (Standard FNF)
+    "a": 0,
+    "s": 1,
+    "w": 2,
+    "d": 3,
+
+    // DFJK Keys (Alternative 4K FNF Engine Layout)
+    // To use DFJK instead of WASD, replace A/S/W/D above with:
+    // "d": 0, "f": 1, "j": 2, "k": 3
   };
 
   // How long (seconds) a note takes to travel from spawn (bottom edge)
   // to the hit zone (top edge). Bigger = more reaction time.
-  const NOTE_TRAVEL_TIME = 1.4;
+  const NOTE_TRAVEL_TIME_BY_DIFF = { easy: 1.65, normal: 1.4, hard: 1.15 };
 
   // Judgement windows in seconds (absolute time difference)
-  const WINDOWS = {
-    sick: 0.05,
-    good: 0.10,
-    bad:  0.16
+  const WINDOWS_BY_DIFF = {
+    easy:   { sick: 0.07, good: 0.14, bad: 0.22, miss: 0.28 },
+    normal: { sick: 0.05, good: 0.10, bad: 0.16, miss: 0.20 },
+    hard:   { sick: 0.035, good: 0.075, bad: 0.12, miss: 0.15 },
   };
-  const MISS_WINDOW = 0.20; // beyond this, note is auto-missed
 
   const SCORE = { sick: 100, good: 70, bad: 30, miss: 0 };
-
   const DIFFICULTY_KEYS = ["easy", "normal", "hard"];
 
+  // Set from the chosen difficulty when a song starts.
+  let NOTE_TRAVEL_TIME = NOTE_TRAVEL_TIME_BY_DIFF.normal;
+  let WINDOWS = WINDOWS_BY_DIFF.normal;
+  let MISS_WINDOW = WINDOWS.miss;
+
   let audioEl, trackContainer, receptors, scoreDisplay, comboDisplay,
-      accuracyDisplay, progressFill;
+      accuracyDisplay, progressFill, countdownDisplay, bgOverlay;
 
   let chartData = null;
-  let activeNotes = [];   // notes currently spawned & on screen {el, time, lane, hit}
-  let allNotes = [];      // full note list for current difficulty, sorted by time
+  let activeNotes = [];   // notes currently spawned & on screen
+  let allNotes = [];      // full note list for current difficulty
   let nextNoteIndex = 0;
   let score = 0, combo = 0, maxCombo = 0;
   let hitCount = 0, totalJudged = 0, accuracySum = 0;
   let rafId = null;
   let trackHeight = 0;
   let finished = false;
+
+  let clockStartMs = null;
+  let audioStarted = false;
 
   function $(id) { return document.getElementById(id); }
 
@@ -50,6 +72,22 @@
     comboDisplay = $("combo-display");
     accuracyDisplay = $("accuracy-display");
     progressFill = $("progress-bar-fill");
+    countdownDisplay = $("countdown-display");
+
+    // Create the background overlay dynamically if it doesn't exist
+    if (!$("bg-overlay")) {
+      bgOverlay = document.createElement("div");
+      bgOverlay.id = "bg-overlay";
+      document.body.insertBefore(bgOverlay, document.body.firstChild);
+    } else {
+      bgOverlay = $("bg-overlay");
+    }
+  }
+
+  function getCurrentTime() {
+    if (audioStarted) return audioEl.currentTime;
+    if (clockStartMs === null) return 0;
+    return (performance.now() - clockStartMs) / 1000;
   }
 
   async function loadChart(chartPath) {
@@ -61,12 +99,21 @@
   function resetState() {
     activeNotes.forEach(n => n.el && n.el.remove());
     activeNotes = [];
+    trackContainer.querySelectorAll(".particle, .combo-milestone, .judgement").forEach(el => el.remove());
+    document.querySelectorAll(".combo-flash").forEach(el => el.remove());
+    
     nextNoteIndex = 0;
     score = 0; combo = 0; maxCombo = 0;
     hitCount = 0; totalJudged = 0; accuracySum = 0;
     finished = false;
+    audioStarted = false;
+    clockStartMs = null;
+    
     updateHud();
+    updateBackgroundHeat();
+    
     progressFill.style.width = "0%";
+    if (countdownDisplay) countdownDisplay.textContent = "";
   }
 
   function updateHud() {
@@ -74,6 +121,23 @@
     comboDisplay.textContent = combo > 1 ? combo + "x COMBO" : "";
     const acc = totalJudged > 0 ? (accuracySum / totalJudged) * 100 : 100;
     accuracyDisplay.textContent = "ACC: " + acc.toFixed(1) + "%";
+  }
+
+  function updateBackgroundHeat() {
+    // Max intensity reached at 50 combo
+    const heat = Math.min(combo / 50, 1);
+    if (bgOverlay) {
+      bgOverlay.style.setProperty("--combo-heat", heat);
+    }
+  }
+
+  function bump(el, className, duration = 150) {
+    el.classList.remove(className);
+    void el.offsetWidth;
+    el.classList.add(className);
+    clearTimeout(el.dataset.bumpTimer);
+    const timer = setTimeout(() => el.classList.remove(className), duration);
+    el.dataset.bumpTimer = timer;
   }
 
   function spawnNote(noteData) {
@@ -86,7 +150,6 @@
   }
 
   function receptorY() {
-    // Top offset of receptor center, matches CSS top: 20px + half height
     const size = getComputedStyle(document.documentElement).getPropertyValue("--receptor-size");
     const px = parseFloat(size) || 70;
     return 20 + px / 2;
@@ -98,11 +161,19 @@
   }
 
   function gameLoop() {
-    if (!audioEl || (audioEl.paused && !finished && audioEl.currentTime === 0)) {
-      // not started yet
-    }
-    const currentTime = audioEl.currentTime;
+    const currentTime = getCurrentTime();
     trackHeight = trackContainer.clientHeight;
+
+    if (!audioStarted) {
+      if (currentTime >= 0) {
+        audioStarted = true;
+        countdownDisplay.textContent = "";
+        audioEl.play();
+      } else {
+        const secondsLeft = Math.ceil(-currentTime);
+        countdownDisplay.textContent = secondsLeft > 0 ? String(secondsLeft) : "GO!";
+      }
+    }
 
     // Spawn upcoming notes
     while (nextNoteIndex < allNotes.length &&
@@ -121,7 +192,6 @@
       const spawnTime = n.time - NOTE_TRAVEL_TIME;
       const progress = (currentTime - spawnTime) / NOTE_TRAVEL_TIME;
       
-      // Calculate Y coordinate (moving from bottomEdgeY UP towards rY)
       const y = bottomEdgeY + (rY - bottomEdgeY) * progress - noteSize / 2;
       n.el.style.top = y + "px";
 
@@ -136,12 +206,11 @@
       }
     }
 
-    // Progress bar
     if (audioEl.duration) {
-      progressFill.style.width = (currentTime / audioEl.duration) * 100 + "%";
+      const pct = Math.max(0, Math.min(1, currentTime / audioEl.duration));
+      progressFill.style.width = pct * 100 + "%";
     }
 
-    // End of song check
     if (!finished && audioEl.duration &&
         currentTime >= audioEl.duration - 0.05 &&
         nextNoteIndex >= allNotes.length &&
@@ -160,7 +229,7 @@
 
     let judgement = forcedJudgement;
     if (!judgement) {
-      const delta = Math.abs(audioEl.currentTime - noteObj.time);
+      const delta = Math.abs(getCurrentTime() - noteObj.time);
       if (delta <= WINDOWS.sick) judgement = "sick";
       else if (delta <= WINDOWS.good) judgement = "good";
       else if (delta <= WINDOWS.bad) judgement = "bad";
@@ -180,15 +249,87 @@
       accuracySum += accWeight;
     }
 
+    updateBackgroundHeat();
     showJudgement(judgement, noteObj.lane);
     flashReceptor(noteObj.lane, judgement !== "miss");
     updateHud();
+    bump(scoreDisplay, "bump");
+    if (combo > 1) bump(comboDisplay, "bump");
+
+    if (judgement === "sick" || judgement === "good") {
+      spawnParticles(noteObj.lane);
+      // Spawn random flash if you've got a combo going
+      if (combo >= 5) spawnComboFlash();
+    }
+
+    if (judgement === "sick") {
+      bump(trackContainer, "punch", 120);
+    } else if (judgement === "miss") {
+      bump(trackContainer, "shake", 250);
+    }
+
+    if (judgement !== "miss" && combo > 0 && combo % 10 === 0) {
+      showComboMilestone(combo);
+    }
 
     if (judgement === "miss") {
       noteObj.el.style.opacity = "0.15";
     } else {
       noteObj.el.style.opacity = "0";
     }
+  }
+
+  function spawnComboFlash() {
+    const flash = document.createElement("div");
+    flash.className = "combo-flash";
+    
+    // Pick random position across the screen
+    flash.style.left = (Math.random() * 90 + 5) + "vw";
+    flash.style.top = (Math.random() * 90 + 5) + "vh";
+    
+    // Scale flash size based on current heat
+    const heat = Math.min(combo / 50, 1);
+    const size = 150 + (heat * 400); 
+    flash.style.width = size + "px";
+    flash.style.height = size + "px";
+    flash.style.marginLeft = -(size / 2) + "px";
+    flash.style.marginTop = -(size / 2) + "px";
+
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 400);
+  }
+
+  function spawnParticles(lane) {
+    const receptor = receptors[lane];
+    const rect = receptor.getBoundingClientRect();
+    const containerRect = trackContainer.getBoundingClientRect();
+    const cx = rect.left - containerRect.left + rect.width / 2;
+    const cy = rect.top - containerRect.top + rect.height / 2;
+    const color = getLaneColor(lane);
+
+    const PARTICLE_COUNT = 8;
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const angle = (Math.PI * 2 * i) / PARTICLE_COUNT + Math.random() * 0.4;
+      const distance = 40 + Math.random() * 30;
+      const p = document.createElement("div");
+      p.className = "particle";
+      p.style.left = cx + "px";
+      p.style.top = cy + "px";
+      p.style.background = color;
+      p.style.boxShadow = `0 0 6px ${color}`;
+      p.style.setProperty("--px", Math.cos(angle) * distance + "px");
+      p.style.setProperty("--py", Math.sin(angle) * distance + "px");
+      trackContainer.appendChild(p);
+      setTimeout(() => p.remove(), 460);
+    }
+  }
+
+  function showComboMilestone(combo) {
+    const el = document.createElement("div");
+    el.className = "combo-milestone";
+    el.textContent = combo + " COMBO!";
+    trackContainer.appendChild(el);
+    setTimeout(() => el.remove(), 600);
   }
 
   function showJudgement(judgement, lane) {
@@ -211,14 +352,14 @@
   }
 
   function getLaneColor(lane) {
-    return getComputedStyle(document.documentElement).getPropertyValue("--lane" + lane);
+    return getComputedStyle(document.documentElement).getPropertyValue("--lane" + lane).trim();
   }
 
   function findClosestUnjudgedNote(lane) {
     let best = null, bestDelta = Infinity;
     for (const n of activeNotes) {
       if (n.judged || n.lane !== lane) continue;
-      const delta = Math.abs(audioEl.currentTime - n.time);
+      const delta = Math.abs(getCurrentTime() - n.time);
       if (delta < bestDelta) {
         bestDelta = delta;
         best = n;
@@ -292,6 +433,10 @@
     }
     allNotes = notes.slice().sort((a, b) => a.time - b.time);
 
+    NOTE_TRAVEL_TIME = NOTE_TRAVEL_TIME_BY_DIFF[diffKey] || NOTE_TRAVEL_TIME_BY_DIFF.normal;
+    WINDOWS = WINDOWS_BY_DIFF[diffKey] || WINDOWS_BY_DIFF.normal;
+    MISS_WINDOW = WINDOWS.miss;
+
     let audioPath = chartData.audio;
     if (!audioPath.startsWith("http") && !audioPath.startsWith("/")) {
       const chartDir = songEntry.chart.substring(0, songEntry.chart.lastIndexOf("/") + 1);
@@ -310,7 +455,10 @@
     document.addEventListener("mousedown", handleMouseDown);
     document.addEventListener("contextmenu", preventContextMenu);
 
-    audioEl.play();
+    audioStarted = false;
+    const preRoll = NOTE_TRAVEL_TIME + 0.3;
+    clockStartMs = performance.now() + preRoll * 1000;
+
     rafId = requestAnimationFrame(gameLoop);
   }
 

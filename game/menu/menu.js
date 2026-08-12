@@ -1,6 +1,6 @@
 // ============================================================
-// menu.js - handles the main menu: song list, difficulty select,
-// and switching screens. Talks to game.js via window.RhythmGame
+// menu.js - arcade-style main menu: song carousel + difficulty
+// select. Talks to game.js via window.RhythmGame
 // ============================================================
 
 // List every chart json available here. Each entry points to a
@@ -8,51 +8,99 @@
 // Convention: assets/audio/music/<SongFolder>/<SongFolder>.json (+ .mp3
 // sitting right next to it in the same folder).
 const SONG_LIST = [
-  { id: "eastward", name: "EastWard", chart: "assets/audio/music/EastWard/EastWard.json" },
+  { id: "eastward", name: "EastWard", chart: "assets/audio/music/Eastward/EastWard.json" },
   { id: "rei", name: "Rei dos demônios", chart: "assets/audio/music/Rei/Rei.json" },
+  { id: "SquabbleUp", name: "Squabble Up", chart: "assets/audio/music/SquabbleUp/SquabbleUp.json" },
 ];
 
+// Deterministic "cover art" color per song, so each card reads as its
+// own thing at a glance without needing real art yet.
+const COVER_HUES = [340, 195, 45, 265, 150, 15];
+
+let currentIndex = 0;
 let selectedDifficulty = "normal";
-let selectedSongEntry = null;
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
 
-function populateSongList() {
-  const select = document.getElementById("song-select");
-  select.innerHTML = "";
-  SONG_LIST.forEach(song => {
-    const opt = document.createElement("option");
-    opt.value = song.id;
-    opt.textContent = song.name;
-    select.appendChild(opt);
+function hueForSong(index) {
+  return COVER_HUES[index % COVER_HUES.length];
+}
+
+function renderCarousel() {
+  const song = SONG_LIST[currentIndex];
+  const hue = hueForSong(currentIndex);
+
+  const cover = document.getElementById("song-cover");
+  cover.style.background = `linear-gradient(135deg, hsl(${hue},85%,55%), hsl(${(hue + 40) % 360},85%,40%))`;
+  document.getElementById("song-cover-letter").textContent = song.name.charAt(0).toUpperCase();
+  document.getElementById("song-name").textContent = song.name;
+  document.getElementById("song-index").textContent = `${currentIndex + 1} / ${SONG_LIST.length}`;
+
+  renderDots();
+}
+
+function renderDots() {
+  const container = document.getElementById("carousel-dots");
+  container.innerHTML = "";
+  SONG_LIST.forEach((_, i) => {
+    const dot = document.createElement("span");
+    dot.className = "dot" + (i === currentIndex ? " active" : "");
+    dot.addEventListener("click", () => goToSong(i));
+    container.appendChild(dot);
   });
 }
 
+function goToSong(index) {
+  if (SONG_LIST.length === 0) return;
+  currentIndex = (index + SONG_LIST.length) % SONG_LIST.length;
+
+  const card = document.querySelector(".song-card");
+  card.classList.remove("pop");
+  // force reflow so the animation can retrigger on repeated presses
+  void card.offsetWidth;
+  card.classList.add("pop");
+
+  renderCarousel();
+}
+
+function setDifficulty(diff, btn) {
+  document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedDifficulty = diff;
+}
+
 function initMenu() {
-  populateSongList();
+  renderCarousel();
+
+  document.getElementById("carousel-prev").addEventListener("click", () => goToSong(currentIndex - 1));
+  document.getElementById("carousel-next").addEventListener("click", () => goToSong(currentIndex + 1));
 
   document.querySelectorAll(".diff-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("selected"));
-      btn.classList.add("selected");
-      selectedDifficulty = btn.dataset.diff;
-    });
+    btn.addEventListener("click", () => setDifficulty(btn.dataset.diff, btn));
   });
 
   document.getElementById("play-btn").addEventListener("click", async () => {
-    const songId = document.getElementById("song-select").value;
-    selectedSongEntry = SONG_LIST.find(s => s.id === songId);
-    if (!selectedSongEntry) return;
+    const songEntry = SONG_LIST[currentIndex];
+    if (!songEntry) return;
 
     showScreen("game-screen");
-    await window.RhythmGame.start(selectedSongEntry, selectedDifficulty);
+    await window.RhythmGame.start(songEntry, selectedDifficulty);
   });
 
   document.getElementById("back-to-menu-btn").addEventListener("click", () => {
     showScreen("menu-screen");
+  });
+
+  // Left/right cycles songs while the menu is up (in-game reuses these
+  // keys for lanes, so only listen while the menu screen is active).
+  document.addEventListener("keydown", (e) => {
+    if (!document.getElementById("menu-screen").classList.contains("active")) return;
+    if (e.key === "ArrowLeft") goToSong(currentIndex - 1);
+    else if (e.key === "ArrowRight") goToSong(currentIndex + 1);
+    else if (e.key === "Enter") document.getElementById("play-btn").click();
   });
 }
 

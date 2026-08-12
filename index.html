@@ -9,23 +9,36 @@
 
   <!-- ================= MAIN MENU ================= -->
   <section id="menu-screen" class="screen active">
+    <div class="crt-overlay"></div>
     <h1 class="title">RHYTHM BASE</h1>
 
-    <div class="menu-box">
-      <h2>Select Song</h2>
-      <select id="song-select"></select>
+    <div class="carousel">
+      <button id="carousel-prev" class="carousel-arrow" aria-label="Previous song">&#10094;</button>
 
-      <h2>Select Difficulty</h2>
-      <div class="diff-buttons">
-        <button class="diff-btn" data-diff="easy">EASY</button>
-        <button class="diff-btn selected" data-diff="normal">NORMAL</button>
-        <button class="diff-btn" data-diff="hard">HARD</button>
+      <div class="song-card">
+        <div id="song-cover" class="song-cover">
+          <span id="song-cover-letter">?</span>
+        </div>
+        <div class="song-info">
+          <h2 id="song-name">Song</h2>
+          <div id="song-index" class="song-index">1 / 1</div>
+        </div>
       </div>
 
-      <button id="play-btn">PLAY</button>
+      <button id="carousel-next" class="carousel-arrow" aria-label="Next song">&#10095;</button>
     </div>
 
-    <p class="hint">Controls: D F J K (or Arrow Keys)</p>
+    <div class="carousel-dots" id="carousel-dots"></div>
+
+    <div class="diff-buttons">
+      <button class="diff-btn" data-diff="easy"><span class="diff-stars">&#9733;</span>EASY</button>
+      <button class="diff-btn selected" data-diff="normal"><span class="diff-stars">&#9733;&#9733;</span>NORMAL</button>
+      <button class="diff-btn" data-diff="hard"><span class="diff-stars">&#9733;&#9733;&#9733;</span>HARD</button>
+    </div>
+
+    <button id="play-btn">PLAY</button>
+
+    <p class="hint">D F J K to hit notes &nbsp;|&nbsp; &#8592; &#8594; to change song</p>
   </section>
 
   <!-- ================= GAME SCREEN ================= -->
@@ -37,6 +50,7 @@
     </div>
 
     <div id="track-container">
+      <div id="countdown-display"></div>
       <div id="hit-zone"></div>
       <div class="lane" data-lane="0"><div class="receptor" data-lane="0"></div></div>
       <div class="lane" data-lane="1"><div class="receptor" data-lane="1"></div></div>
